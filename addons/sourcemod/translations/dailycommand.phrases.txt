@@ -1,0 +1,18 @@
+"Phrases"
+{
+	"Data not loaded"
+	{
+		"#format"	""
+		"en"		"{green}[PLG-VIP]{default} Your data isn't pulled from the database yet. Please try again later."
+	}
+	"Only once per day"
+	{
+		"#format"	""
+		"en"		"{green}[PLG-VIP]{default} You can only use this command once per day."
+	}
+	"Streak"
+	{
+		"#format"	"{1:i},{2:i}"
+		"en"		"{green}[PLG-VIP]{default} You have a streak of #{1} days and got {2} credits."
+	}
+}
