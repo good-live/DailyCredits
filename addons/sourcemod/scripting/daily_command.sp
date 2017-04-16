@@ -64,13 +64,14 @@ public Action Command_GetCredits(int client, int args) {
 	}
 	
 	//Check if the last time he used this command is more than 24h
-	if(g_iPlayerTime[client] - GetTime() < 86400) {
+	//If the value is 0 he is new and uses the command the first time
+	if(GetTime() - g_iPlayerTime[client] < 86400) {
 		CReplyToCommand(client, "%t", "Only once per day");
 		return Plugin_Handled;
 	}
 	
 	//Check if he used this command within the last 48h hours
-	if(g_iPlayerTime[client] - GetTime() < 172800) {
+	if(GetTime() - g_iPlayerTime[client] < 172800) {
 		if(g_iPlayerDays[client] < (g_aDays.Length-1))
 			g_iPlayerDays[client]++;
 	}else{
