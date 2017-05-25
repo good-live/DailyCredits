@@ -59,19 +59,18 @@ public void OnClientPostAdminCheck(int client) {
 public Action Command_GetCredits(int client, int args) {
 	//Check if the player data is already loaded
 	if(g_iPlayerStatus[client] != STATUS_LOAD_SUCCESSFULL) {
-		CReplyToCommand(0, "%t", "Data not loaded");
+		CReplyToCommand(0, "%t", "DATA_NOT_LOADED");
 		return Plugin_Handled;
 	}
 	
 	//Check if the last time he used this command is more than 24h
-	//If the value is 0 he is new and uses the command the first time
 	if(GetTime() - g_iPlayerTime[client] < 86400) {
-		CReplyToCommand(client, "%t", "Only once per day");
+		CReplyToCommand(client, "%t", "ONLY_ONCE_PER_DAY");
 		return Plugin_Handled;
 	}
 	
 	//Check if he used this command within the last 48h hours
-	if(GetTime() - g_iPlayerTime[client] < 172800) {
+	if(GetTime() - g_iPlayerTime[client]  < 172800) {
 		if(g_iPlayerDays[client] < (g_aDays.Length-1))
 			g_iPlayerDays[client]++;
 	}else{
@@ -79,7 +78,7 @@ public Action Command_GetCredits(int client, int args) {
 	}
 	
 	DB_UpdatePlayerInfo(client, GetTime(), g_iPlayerDays[client]);
-	CReplyToCommand(client, "%t", "Streak", g_iPlayerDays[client], g_aDays.Get(g_iPlayerDays[client]));
+	CReplyToCommand(client, "%t", "STREAK", g_iPlayerDays[client], g_aDays.Get(g_iPlayerDays[client]));
 	
 	char sCommand[32];
 	Format(sCommand, sizeof(sCommand), "sm_credits #%i %i", GetClientUserId(client), g_aDays.Get(g_iPlayerDays[client]));
@@ -95,7 +94,19 @@ void ReadConfig() {
 	char sPath[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, sPath, sizeof(sPath), "configs/days.cfg");
 	
+	kv.ImportFromFile(sPath);
+	
 	int iCounter = 0;
+	
+	iCounter = kv.GetNum("count", 0);
+	
+	for (int i = 0; i < iCounter; i++)
+		g_aDays.Push(0);
+	
+	kv.JumpToKey("day");
+	
+	iCounter = 0;
+	
 	char sSectionKey[8];
 	
 	//Parse the counter to the section key
@@ -103,10 +114,11 @@ void ReadConfig() {
 	
 	//Read the amount for the current day and save it to the array
 	while(kv.JumpToKey(sSectionKey)){
-		g_aDays.Push(kv.GetNum("amount", 0));
+		g_aDays.Set(iCounter, kv.GetNum("amount", 0));
 		iCounter++;
 		//Parse the counter to the section key
 		IntToString(iCounter, sSectionKey, sizeof(sSectionKey));
+		kv.GoBack();
 	}
 }
 
