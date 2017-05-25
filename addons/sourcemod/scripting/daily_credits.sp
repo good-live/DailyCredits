@@ -6,6 +6,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <multicolors>
+#include <store>
 
 
 //Defines (Could also use an enum, but i'm too lazy ^^)
@@ -19,7 +20,7 @@ public Plugin myinfo =
 {
 	name = "Daily Credits",
 	author = "good_live",
-	description = "Allow your users to get a small amount of credits each day",
+	description = "Allow players to get a small amount of credits each day",
 	version = "1.0",
 	url = "painlessgaming.eu"
 };
@@ -35,7 +36,7 @@ int g_iPlayerDays[MAXPLAYERS + 1] = { -1, ... };
 public void OnPluginStart()
 {
 	//Translation
-	LoadTranslations("dailycommand.phrases");
+	LoadTranslations("daily_credits.phrases");
 	
 	g_aDays = new ArrayList();
 	
@@ -80,10 +81,13 @@ public Action Command_GetCredits(int client, int args) {
 	DB_UpdatePlayerInfo(client, GetTime(), g_iPlayerDays[client]);
 	CReplyToCommand(client, "%t", "STREAK", g_iPlayerDays[client], g_aDays.Get(g_iPlayerDays[client]));
 	
-	char sCommand[32];
-	Format(sCommand, sizeof(sCommand), "sm_credits #%i %i", GetClientUserId(client), g_aDays.Get(g_iPlayerDays[client]));
+	Store_SetClientCredits(client, Store_GetClientCredits(client) + g_aDays.Get(g_iPlayerDays[client]));
 	
-	ServerCommand(sCommand);
+//	This is for non ZephStore
+//	char sCommand[32];
+//	Format(sCommand, sizeof(sCommand), "sm_credits #%i %i", GetClientUserId(client), g_aDays.Get(g_iPlayerDays[client]));
+//	ServerCommand(sCommand);
+	
 	return Plugin_Handled;
 }
 
@@ -96,38 +100,22 @@ void ReadConfig() {
 	
 	kv.ImportFromFile(sPath);
 	
-	int iCounter = 0;
-	
-	iCounter = kv.GetNum("count", 0);
-	
-	for (int i = 0; i < iCounter; i++)
-		g_aDays.Push(0);
-	
-	kv.JumpToKey("day");
-	
-	iCounter = 0;
-	
-	char sSectionKey[8];
-	
-	//Parse the counter to the section key
-	IntToString(iCounter, sSectionKey, sizeof(sSectionKey));
+	if (!kv.GotoFirstSubKey())
+		return;
 	
 	//Read the amount for the current day and save it to the array
-	while(kv.JumpToKey(sSectionKey)){
-		g_aDays.Set(iCounter, kv.GetNum("amount", 0));
-		iCounter++;
-		//Parse the counter to the section key
-		IntToString(iCounter, sSectionKey, sizeof(sSectionKey));
-		kv.GoBack();
-	}
+	do {
+		g_aDays.Push(kv.GetNum("amount", 0));
+	} while (kv.GotoNextKey());
+	return;
 }
 
 void DB_Connect()
 {
-	if(!SQL_CheckConfig("dailycommands"))
-		SetFailState("Couldn't find the database entry 'dailycommands'!");
+	if(!SQL_CheckConfig("dailycredits"))
+		SetFailState("Couldn't find the database entry 'dailycredits'!");
 	else
-		Database.Connect(DB_Connect_Callback, "dailycommands");
+		Database.Connect(DB_Connect_Callback, "dailycredits");
 }
 
 public void DB_Connect_Callback(Database db, const char[] error, any data)
@@ -142,7 +130,7 @@ public void DB_Connect_Callback(Database db, const char[] error, any data)
 
 void DB_Create_Table(){
 	char sQuery[512];
-	Format(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `daycommand` (`steamid` varchar(21) NOT NULL,`lasttime` int(11) NOT NULL DEFAULT '0',`days` int(11) NOT NULL DEFAULT '0')");
+	Format(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `dailycredits` (`steamid` varchar(21) NOT NULL,`lasttime` int(11) NOT NULL DEFAULT '0',`days` int(11) NOT NULL DEFAULT '0')");
 	g_hDatabase.Query(DB_CreateTable_Callback, sQuery);
 }
 
@@ -187,7 +175,7 @@ void DB_LoadPlayerInfo(int client)
 	
 	//Send Query
 	char sQuery[512];
-	Format(sQuery, sizeof(sQuery), "SELECT lasttime, days FROM daycommand WHERE steamid = '%s'", sSteamID);
+	Format(sQuery, sizeof(sQuery), "SELECT lasttime, days FROM dailycredits WHERE steamid = '%s'", sSteamID);
 	g_hDatabase.Query(DB_LoadPlayerID_Callback, sQuery, GetClientUserId(client));
 }
 
@@ -206,54 +194,19 @@ public void DB_LoadPlayerID_Callback(Database db, DBResultSet results, const cha
 		return;
 	}
 	
-	//Check if the player isn't in the database and add him if not
+	//Check if the player is in the database
 	results.FetchRow();
 	if(!results.RowCount)
 	{
-		DB_AddPlayerToDatabase(client);
-		return;
+		g_iPlayerTime[client] = 0;
+		g_iPlayerDays[client] = 0;
+		g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;
+	}else{
+		g_iPlayerTime[client] = results.FetchInt(0);
+		g_iPlayerDays[client] = results.FetchInt(1);
+		g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;	
 	}
-	
-	g_iPlayerTime[client] = results.FetchInt(0);
-	g_iPlayerDays[client] = results.FetchInt(1);
-	g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;
-}
 
-void DB_AddPlayerToDatabase(int client)
-{
-	//Get the players SteamID
-	char sSteamID[20];
-	if(!GetClientAuthId(client, AuthId_Steam3, sSteamID, sizeof(sSteamID)))
-	{
-		g_iPlayerStatus[client] = STATUS_LOAD_FAILED;
-		LogError("Failed to load the SteamID from %L. This session is not tracked", client);
-		return;
-	}
-	
-	//Send the query
-	char sQuery[512];
-	Format(sQuery, sizeof(sQuery), "INSERT INTO daycommand (steamid, lasttime, days) VALUES ('%s', %i, %i)", sSteamID, 0, 0);
-	g_hDatabase.Query(DB_AddPlayerToDatabase_Callback, sQuery, GetClientUserId(client));
-}
-
-public void DB_AddPlayerToDatabase_Callback(Database db, DBResultSet results, const char[] error, int userid)
-{
-	//Check if the client is still there
-	int client = GetClientOfUserId(userid);
-	if(!IsClientValid(client))
-		return;
-		
-	//Check if there was an error
-	if(strlen(error) > 0 || results == INVALID_HANDLE)
-	{
-		LogError("Failed to add %L to the database: %s", client, error);
-		g_iPlayerStatus[client] = STATUS_LOAD_FAILED;
-		return;
-	}
-	
-	g_iPlayerTime[client] = 0;
-	g_iPlayerDays[client] = 0;
-	g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;
 }
 
 void DB_UpdatePlayerInfo(int client, int time, int days) {
@@ -271,7 +224,7 @@ void DB_UpdatePlayerInfo(int client, int time, int days) {
 	}
 	
 	char sQuery[512];
-	Format(sQuery, sizeof(sQuery), "UPDATE daycommand SET lasttime = %i, days = %i WHERE steamid = '%s';", time, days, sSteamID);
+	Format(sQuery, sizeof(sQuery), "INSERT INTO dailycredits (steamid, lasttime, days) VALUES('%s', %i, %i) ON DUPLICATE KEY SET lasttime = %i, days = %i;", time, days, sSteamID, time, days);
 	g_hDatabase.Query(DB_UpdatePlayerInfo_Callback, sQuery, GetClientUserId(client));
 }
 
