@@ -28,4 +28,4 @@ This hasn't been tested in full depth. Usage on your own risk.
 You can add as much days as you want. **Important** The days are evaluated by their position in the config. Not by their name! (See the exampel)
 
 ## Database
-You'll need to add a 'dailycredits' entry to you database.cfg. The tables will be created automaticly.
+You'll need to add a 'dailycredits' entry to your database.cfg. The tables will be created automaticly.
