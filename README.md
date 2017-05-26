@@ -7,7 +7,8 @@ This hasn't been tested in full depth. Usage on your own risk.
 
 # Config (configs/days.cfg)
 
-```"Days"
+```
+"Days"
 {
 	"2"
 	{
