@@ -1,8 +1,5 @@
 #pragma semicolon 1
 
-#define DEBUG
-
-
 #include <sourcemod>
 #include <sdktools>
 #include <multicolors>
