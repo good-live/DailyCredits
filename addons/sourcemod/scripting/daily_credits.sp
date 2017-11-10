@@ -44,34 +44,42 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_getcredits", Command_GetCredits, "Get your daily credits");
 }
 
-public void OnClientConnected(int client) {
+public void OnClientConnected(int client) 
+{
 	g_iPlayerStatus[client] = STATUS_NOT_LOADED;
 	g_iPlayerTime[client] = -1;
 	g_iPlayerDays[client] = -1;
 }
 
-public void OnClientPostAdminCheck(int client) {
+public void OnClientPostAdminCheck(int client) 
+{
 	DB_LoadPlayerInfo(client);
 }
 
-public Action Command_GetCredits(int client, int args) {
+public Action Command_GetCredits(int client, int args) 
+{
 	//Check if the player data is already loaded
-	if(g_iPlayerStatus[client] != STATUS_LOAD_SUCCESSFULL) {
+	if(g_iPlayerStatus[client] != STATUS_LOAD_SUCCESSFULL) 
+	{
 		CReplyToCommand(0, "%t", "DATA_NOT_LOADED");
 		return Plugin_Handled;
 	}
 	
 	//Check if the last time he used this command is more than 24h
-	if(GetTime() - g_iPlayerTime[client] < 86400) {
+	if(GetTime() - g_iPlayerTime[client] < 86400) 
+	{
 		CReplyToCommand(client, "%t", "ONLY_ONCE_PER_DAY");
 		return Plugin_Handled;
 	}
 	
 	//Check if he used this command within the last 48h hours
-	if(GetTime() - g_iPlayerTime[client]  < 172800) {
-		if(g_iPlayerDays[client] < (g_aDays.Length-1))
+	if(GetTime() - g_iPlayerTime[client]  < 172800) 
+	{
+		if(g_iPlayerDays[client] < (g_aDays.Length-1)) 
+		{
 			g_iPlayerDays[client]++;
-	}else{
+		}
+	} else {
 		g_iPlayerDays[client] = 0;
 	}
 	
@@ -88,7 +96,8 @@ public Action Command_GetCredits(int client, int args) {
 	return Plugin_Handled;
 }
 
-void ReadConfig() {
+void ReadConfig() 
+{
 	KeyValues kv = new KeyValues("Days");
 	
 	//Setup Config Path
@@ -109,10 +118,12 @@ void ReadConfig() {
 
 void DB_Connect()
 {
-	if(!SQL_CheckConfig("dailycredits"))
+	if(!SQL_CheckConfig("dailycredits")) 
+	{
 		SetFailState("Couldn't find the database entry 'dailycredits'!");
-	else
+	} else {
 		Database.Connect(DB_Connect_Callback, "dailycredits");
+	}
 }
 
 public void DB_Connect_Callback(Database db, const char[] error, any data)
@@ -125,7 +136,8 @@ public void DB_Connect_Callback(Database db, const char[] error, any data)
 	DB_Create_Table();
 }
 
-void DB_Create_Table(){
+void DB_Create_Table()
+{
 	char sQuery[512];
 	Format(sQuery, sizeof(sQuery), "CREATE TABLE IF NOT EXISTS `dailycredits` (`steamid` varchar(21) NOT NULL,`lasttime` int(11) NOT NULL DEFAULT '0',`days` int(11) NOT NULL DEFAULT '0')");
 	g_hDatabase.Query(DB_CreateTable_Callback, sQuery);
@@ -134,7 +146,7 @@ void DB_Create_Table(){
 public void DB_CreateTable_Callback(Database db, DBResultSet results, const char[] error, int userid)
 {		
 	//Check if there was an error
-	if(strlen(error) > 0 || results == INVALID_HANDLE)
+	if(strlen(error) > 0 || results == INVALID_HANDLE) 
 	{
 		LogError("Failed to create the tables: %s", error);
 		return;
@@ -147,7 +159,7 @@ public void DB_CreateTable_Callback(Database db, DBResultSet results, const char
 //This one only gets called internal so it doesn't have to be public
 void OnDatabaseConnected()
 {
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MaxClients; i++) 
 	{
 		if(!IsClientValid(i))
 			continue;
@@ -198,7 +210,7 @@ public void DB_LoadPlayerID_Callback(Database db, DBResultSet results, const cha
 		g_iPlayerTime[client] = 0;
 		g_iPlayerDays[client] = 0;
 		g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;
-	}else{
+	} else {
 		g_iPlayerTime[client] = results.FetchInt(0);
 		g_iPlayerDays[client] = results.FetchInt(1);
 		g_iPlayerStatus[client] = STATUS_LOAD_SUCCESSFULL;	
